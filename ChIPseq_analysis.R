@@ -1,0 +1,517 @@
+############# TbsP ChIP-seq analysis #############
+
+### Unzip raw data in local laptop using Terminal 
+#   $ gunzip *.gz
+
+
+
+
+
+
+
+### Trim adapter or low quality sequences in local laptop using Terminal followed by Quality check by Fastqc
+#   $ trim_galore -o ./trimming *.fastq --paired --fastqc
+
+
+
+
+
+
+
+### Index and Alignment in local laptop using Terminal
+#   $ bowtie2-build HVO.fna HVO
+#   $ bowtie2 -x ./Index/HVO -1 tbsPHA_1_IP_S41_S47_R1_val_1.fq -2 tbsPHA_1_IP_S41_S47_R2_val_2.fq -S tbsPHA_1_IP_S41_S47.sam
+
+
+
+
+
+  
+
+### Bam file generation
+# 1)  $ samtools view -bS S49_H26_1_glc_IP.sam > S49_H26_1_glc_IP.bam
+#     = for file in ./*.sam; do samtools view -bS $file -o ./bam/$file.bam ; done
+
+#  or $ samtools view -bS -f 0x2 S49_H26_1_glc_IP.sam > S49_H26_1_glc_IP.bam
+#     = for file in ./*.sam; do samtools view -bS -f 0x2 $file -o ./bam/$file.bam ; done
+
+
+
+# 2)  $ samtools sort S49_H26_1_glc_IP.bam > S49_H26_1_glc_IP_sorted.bam
+#     = for file in ./*.bam; do samtools sort $file -o ./bam_sort/$file.sort.bam ; done
+#     *Change the file name from ~.sam.bam.sort.bam to(->) ~_sorted.bam
+
+
+# 3)  $ samtools index S49_H26_1_glc_IP_sorted.bam
+#     = for file in ./*.bam; do samtools index $file ; done
+
+
+
+
+
+
+
+
+
+
+
+### Peak calling from pair-end data by MACS2
+# https://hbctraining.github.io/Intro-to-ChIPseq/lessons/05_peak_calling_macs.html
+# https://github.com/taoliu/MACS
+
+
+#macs2 callpeak -t data/H26_1_glc_IP_S43_S49_sorted.bam -c data/H26_1_glc_WCE_S46_S52_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n H26_1_glc 2> macs2/H26_1_glc-macs2.log
+#macs2 callpeak -t data/H26_2_glc_IP_S85_S91_sorted.bam -c data/H26_2_glc_WCE_S64_S70_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n H26_2_glc 2> macs2/H26_2_glc-macs2.log
+#macs2 callpeak -t data/tbsPHA_1_glc_IP_S79_S85_sorted.bam -c data/tbsPHA_1_glc_WCE_S48_S54_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_1_glc 2> macs2/tbsPHA_1_glc-macs2.log
+
+#macs2 callpeak -t data/tbsPHA_2_glc_IP_S45_S51_sorted.bam -c data/tbsPHA_2_glc_WCE_S54_S60_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_2_glc 2> macs2/tbsPHA_2_glc-macs2.log
+#macs2 callpeak -t data/tbsPHA_3_glc_IP_S72_S78_sorted.bam -c data/tbsPHA_3_glc_WCE_S66_S72_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_3_glc 2> macs2/tbsPHA_3_glc-macs2.log
+#macs2 callpeak -t data/tbsPHA_4_glc_IP_S78_S84_sorted.bam -c data/tbsPHA_4_glc_WCE_S71_S77_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_4_glc 2> macs2/tbsPHA_4_glc-macs2.log
+
+
+
+
+
+
+
+
+
+
+### Peakcalling quality control I by ChIP_QC 
+BiocManager::install(c("GenomicRanges","rtracklayer", "ChIPQC"))
+
+# To fix a bug in QCmetrics(ChIPQCsample) which will cause the error: "names' attribute [9] must be the same length as the vector [7]" (https://github.com/shengqh/ChIPQC)
+library(devtools)
+install_github("shengqh/ChIPQC")
+
+library(tidyverse)
+library(ChIPQC)
+
+# Creating a custom annotation track from .gff file
+txdb <- GenomicFeatures::makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff", format = "gff")
+
+#reduce(unique(unlist(GenomicFeatures::cdsBy(txdb, "tx"))))
+txn <- GenomicFeatures::transcripts(txdb)
+gene <- unlist(GenomicFeatures::cdsBy(txdb, "tx"))
+pro500 <- GenomicFeatures::promoters(txdb, upstream = 500, downstream = 0)
+pro250 <- GenomicFeatures::promoters(txdb, upstream = 250, downstream = 0)
+
+hvo <- list(version="",
+            gff.features = txn,
+            genes = gene,
+            promoters250 = pro250,
+            promoters500 = pro500)
+
+# load sample file
+samples <- as.data.frame(read_csv("Meta_chipqc_2.csv"))
+
+# create and execute the experiment!
+#register(SerialParam()) # prevents BiocParallel error (Run this if you use Windows!)
+exp <- ChIPQC(experiment = samples, annotation = hvo)
+exp
+ChIPQCreport(exp, reportFolder ="ChIPQC report_test", reportName="ChIPQC_gc")
+
+mean(head(as.data.frame(QCmetrics(exp))$FragL, n=8))
+mean(tail(as.data.frame(QCmetrics(exp))$FragL, n=8))
+
+# Use fragment lengths of 150 for IP samples and 220 for WCE sampels in final peak calling. 
+plotCC(exp, facetBy = c("Condition", "Factor"))
+
+#FragmentLengthCrossCoverage(exp)[1:8]/FragmentLengthCrossCoverage(exp)[9:16]
+#ReadLengthCrossCoverage(exp)[1:8]/ReadLengthCrossCoverage(exp)[9:16]
+#RelativeCrossCoverage(exp)
+abs(RelativeCrossCoverage(exp)[1:8]/RelativeCrossCoverage(exp)[9:16])
+abs(RelativeCrossCoverage(exp2)[1:8]/RelativeCrossCoverage(exp2)[9:16])
+
+QCmetadata(exp)
+#for (i in 1:5) {
+#  plot(crosscoverage(QCsample(exp,i)),type='l',
+#       ylab="Cross-coverage",
+#       xlab="Fragment length", main = rownames(QCmetadata(exp))[i])}
+
+# Single sample assessment 
+tbsPHA_1_glc_IP = ChIPQCsample("data/tbsPHA_1_glc_IP_S79_S85_sorted.bam", 
+                               peaks="mosaics/HVO_tbsPHA_glc_1.narrowPeak", annotation = hvo)
+tbsPHA_1_glc_WCE = ChIPQCsample("data/tbsPHA_1_glc_WCE_S48_S54_sorted.bam", 
+                               peaks="mosaics/HVO_tbsPHA_glc_1.narrowPeak", annotation = hvo)
+tbsPHA_1_glc_IP
+tbsPHA_1_glc_WCE
+
+QCmetrics(tbsPHA_1_glc_IP)
+QCmetrics(tbsPHA_1_glc_WCE)
+
+
+
+
+
+
+
+### Peakcalling quality control II by IDR
+# https://github.com/nboley/idr
+# Required r files: 1) batch-consistency-analysis.r, 2) batch-consistency-plot.r, 3) functions-all-clayton-12-13.r
+# Required genome_table for the strain (i.e., Haloferax volcanii)
+#     $ Rscript batch-consistency-analysis.r H26-rep1_peaks.narrowPeak H26-rep2_peaks.narrowPeak -1 ./IDR_analysis/H26_1vs_H26_2 0 F p.value
+#     $ Rscript batch-consistency-plot.r 6 ./IDR_output/tbsP ./IDR_analysis/tbsP1_vs_tbsP2 ./IDR_analysis/tbsP1_vs_tbsP3 ./IDR_analysis/tbsP1_vs_tbsP4 ./IDR_analysis/tbsP2_vs_tbsP3 ./IDR_analysis/tbsP2_vs_tbsP4 ./IDR_analysis/tbsP3_vs_tbsP4
+
+
+
+
+
+
+### Annotation and identification of peak on genome
+# http://bioconductor.org/packages/devel/bioc/vignettes/ChIPseeker/inst/doc/ChIPseeker.html
+BiocManager::install("ChIPseeker")
+BiocManager::install("clusterProfiler")
+
+library(ChIPseeker)
+library(clusterProfiler)
+library(AnnotationDbi)
+library(GenomicRanges)
+library(IRanges)
+
+# Load data (*Remove "the header" in the bed file or message like as Error in .Call2("solve_user_SEW0", start, end, width, PACKAGE = "IRanges") : In range 1: at least two out of 'start', 'end', and 'width', must be supplied.)
+samplefiles <- list.files("./mosaics/fragL200", pattern= ".bed", full.names=TRUE)
+samplefiles <- as.list(samplefiles)
+names(samplefiles) <- c("tbsP_1", "tbsP_2", "tbsP_3", "tbsP_4", "H26_2")
+
+# Database construction for the index genome from gff file deposited in NCBI
+library(GenomicFeatures)
+hvo_TxDb <- makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff", 
+                            organism="Haloferax volcanii", format = "gff")
+
+# Analyze data one-by-one -> Recommend to go below for the group analysis
+peakAnnoList <- lapply(samplefiles[[2]], annotatePeak, TxDb=hvo_TxDb, 
+                       tssRegion=c(-500, 500), verbose=FALSE)
+
+peak <- readPeakFile(samplefiles[[2]])
+peak
+
+covplot(peak, weightCol="V5")
+
+promoter <- getPromoters(TxDb=hvo_TxDb, upstream=500, downstream=500)
+tagMatrix <- getTagMatrix(peak, windows=promoter)
+
+tagHeatmap(tagMatrix, xlim=c(-500, 500), color="red")
+
+peakHeatmap(samplefiles[[2]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
+plotAvgProf2(samplefiles[[2]], TxDb=hvo_TxDb, upstream=500, downstream=500,
+             xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency")
+
+plotAvgProf(tagMatrix, xlim=c(-500, 500), conf = 0.95, resample = 500)
+
+peakAnno <- annotatePeak(samplefiles[[2]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
+                         genomicAnnotationPriority = c("Promoter", "5UTR", "3UTR", "Exon", "Intron", "Downstream", "Intergenic"),
+                         addFlankGeneInfo = TRUE, verbose=FALSE)
+
+gene.list <- as.data.frame(peakAnno)
+write.csv(gene.list, "ChIP_seq_genes.csv")  # Results
+
+plotAnnoPie(peakAnno)
+plotAnnoBar(peakAnno)
+vennpie(peakAnno)
+upsetplot(peakAnno)
+upsetplot(peakAnno, vennpie=TRUE)
+plotDistToTSS(peakAnno,
+              title="Distribution of transcription factor-binding loci\nrelative to TSS")
+
+# Group analysis
+peakAnnoList <- lapply(samplefiles, annotatePeak, TxDb=hvo_TxDb, 
+                       tssRegion=c(-500, 500), verbose=FALSE)
+
+promoter <- getPromoters(TxDb=hvo_TxDb, upstream=500, downstream=500)
+tagMatrixList <- lapply(samplefiles, getTagMatrix, windows=promoter)
+
+plotAvgProf(tagMatrixList, xlim=c(-500, 500))
+
+plotAvgProf(tagMatrixList, xlim=c(-500, 500), conf=0.95,resample=500, facet="row")
+
+tagHeatmap(tagMatrixList, xlim=c(-500, 500), color=NULL)
+
+plotAnnoBar(peakAnnoList)
+plotDistToTSS(peakAnnoList)
+
+gene.list <- as.data.frame(peakAnnoList[[1]])
+write.csv(gene.list, "ChIP_seq_genes_tbsP_1.csv")  # Results
+
+
+
+
+
+
+### Merge the bed files and identify the whole peaks profile - Codes from Rylee
+# for two replicate comparisons:
+#     $ bedtools intersect -f 0.5 -r -a replicate1.bed -b replicate2.bed > OUTFILE.bed
+
+# for 3+ replicate comparisons, we need to approach this combinatorically:
+#     $ bedtools intersect -f 0.5 -r -wb -names B C D -a HVO_tbsPHA_glc_1.bed -b HVO_tbsPHA_glc_2.bed HVO_tbsPHA_glc_3.bed HVO_tbsPHA_glc_4.bed > intersectABCD.bed
+# Code above gives peaks that are in ABCD, ABC, ABD, ACD, AB, AC, AD
+
+#     $ bedtools intersect -f 0.5 -r -wb -names C D A -a HVO_tbsPHA_glc_2.bed -b HVO_tbsPHA_glc_3.bed HVO_tbsPHA_glc_4.bed HVO_tbsPHA_glc_1.bed > intersectBCDA.bed
+# Code above gives peaks that are in BCD, BC, BD
+
+# This is not essential if you are only interested in peaks that are conserved in 3+ replicates
+#     $ bedtools intersect -f 0.5 -r -wa -a rep_C.bed -b rep_D.bed > intersectCD.bed
+
+#I combine the peak files by hand. Doing so, I update the peak range to the narrowest range shared across replicates, 
+#take the highest score, and update the peak name to reflect the replicates that shared the peak.
+
+
+
+
+
+
+
+### Merged bed file analysis
+# Load data 
+samplefiles <- list.files("./mosaics", pattern= ".bed", full.names=TRUE)
+samplefiles <- as.list(samplefiles)
+
+# Database construction for the index genome from gff file deposited in NCBI
+library(GenomicFeatures)
+hvo_TxDb <- makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff", 
+                            organism="Haloferax volcanii", format = "gff")
+
+# Analyze data one-by-one -> Recommend to go below for the group analysis
+peakAnnoList <- lapply(samplefiles[[4]], annotatePeak, TxDb=hvo_TxDb, 
+                       tssRegion=c(-500, 500), verbose=FALSE)
+
+peak <- readPeakFile(samplefiles[[4]])
+peak
+
+covplot(peak, weightCol="V5")
+
+promoter <- getPromoters(TxDb=hvo_TxDb, upstream=500, downstream=500)
+tagMatrix <- getTagMatrix(peak, windows=promoter)
+
+peakHeatmap(samplefiles[[4]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
+plotAvgProf2(samplefiles[[4]], TxDb=hvo_TxDb, upstream=500, downstream=500,
+             xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency")
+
+plotAvgProf(tagMatrix, xlim=c(-500, 500), conf = 0.95, resample = 500)
+
+peakAnno <- annotatePeak(samplefiles[[4]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
+                         genomicAnnotationPriority = c("Promoter", "5UTR", "3UTR", "Exon", "Intron", "Downstream", "Intergenic"),
+                         addFlankGeneInfo = TRUE, verbose=FALSE)
+
+gene.list <- as.data.frame(peakAnno)
+write.csv(gene.list, "ChIP_seq_genes_BCDA.csv")  # Results
+
+# Matching for a gene name replcement and a significant gene note
+rm(list = ls()) 
+
+# you need to add column names as "Old_locus", "Uniprot" and "Protein_name" in the .csv file
+raw.reads <- read.csv("ChIP_seq_genes_BCDA.csv")
+reference <- read.csv("DS2_uniprot_2.csv")
+
+#indicate a significant gene by "Yes" in the raw.reads file
+# a: gene name in the signif.gene file
+# b: significant gene in the signif.gene file
+# c: gene name in the raw.reads file
+# d: Yes in the raw.reads file
+#    d    <-                 b  [match( c , a)]
+
+raw.reads$Old_locus <- reference$Old_locus[match(raw.reads$transcriptId, reference$Locus)]
+raw.reads$Uniprot <- reference$Entry[match(raw.reads$Old_locus, reference$Gene_uniprot)]
+raw.reads$Protein_name <- reference$Protein_name[match(raw.reads$Uniprot, reference$Entry)]
+
+write.csv(raw.reads, "ChIP_seq_genes_BCDA_annoated.csv") 
+
+
+
+
+
+
+### BigWig file generation (normalized by WCE)
+#   $ bamCompare -b1 ./data/H26_1_glc_IP_S43_S49_sorted.bam -b2 ./data/H26_1_glc_WCE_S46_S52_sorted.bam -o ./visualization/bigWig/H26_1_glc_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./visualization/bigWig/H26_1_glc_bamCompare.log
+
+
+
+
+
+
+
+
+### Identify the conserved motif by DREME (http://meme-suite.org/tools/dreme)
+# Extract the first three columns for 
+#     $ cut -f 1,2,3 intersectABCD.bed  > intersectABCD-simple.bed
+#     $ cut -f 1,2,3 intersectBCDA.bed  > intersectBCDA-simple.bed
+
+#     $ bedtools getfasta -fi HVO.fa -bed intersectABCD-simple.bed -fo intersectABCD-simple-dreme.fasta
+#     $ bedtools getfasta -fi HVO.fa -bed intersectBCDA-simple.bed -fo intersectBCDA-simple-dreme.fasta
+
+
+
+
+
+
+
+
+
+
+
+####################################### Other information ####################################### 
+
+### Peak calling by MOSAiCS R package
+# Cynthia L. Darnell, Rylee K. Hackley, and Amy K. Schmid
+# https://github.com/amyschmid/rosr-chip-utils/tree/master/RosR_ChIP-seq_pipeline
+# https://bioconductor.org/packages/release/bioc/html/mosaics.html
+
+# Package installation and libarary loading
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install("mosaics")
+
+library(mosaics)
+library(hexbin)
+library(tidyverse)
+
+sample_file <- read_csv("Meta_mosaics_1.csv", col_names = F)
+
+# For single-end ChIP-seq,,,
+# Construct bins for IP, you can adjust fragLen and binSize depending on the ChIPQC later. 
+IP_files <- unique(sample_file$X1)
+
+for (i in 1:length(IP_files)){
+  constructBins(infile=paste("data/", IP_files[i], sep=""),
+                fileFormat="bam",
+                outfileLoc="mosaics/bins/",
+                byChr=FALSE,
+                fragLen=200,
+                binSize=200,
+                capping=0,
+                PET=FALSE)
+}
+
+# Construct bins for WCE
+WCE_files <- sample_file$X2
+
+for (i in 1:length(WCE_files)){
+  constructBins(infile=paste("data/", WCE_files[i], sep=""),
+                fileFormat="bam",
+                outfileLoc="mosaics/bins/",
+                byChr=FALSE,
+                fragLen=200,
+                binSize=200,
+                capping=0,
+                PET=FALSE)
+}
+
+for (i in 1:nrow(sample_file)) {
+  sample_name <- paste("mosaics/bins/", sample_file[i,1], sep = "")
+  sample_name <- str_replace(string = sample_name, pattern = ".bam", replacement = ".bam_fragL200_bin200.txt")
+  ref_name <- paste("mosaics/bins/", sample_file[i,2], sep = "")
+  ref_name <- str_replace(string = ref_name, pattern = ".bam", replacement = ".bam_fragL200_bin200.txt")
+  
+  print(paste("analyzing", sample_name, "against", ref_name))
+  
+  binTest <- readBins(type=c("chip", "input"), fileName= c(sample_name, ref_name))
+  count_data <- hexbin (binTest@input, binTest@tagCount, xbins=100)
+  control <- plot(count_data, trans=log, inv=exp, colramp=rainbow, xlab="WCE", ylab="ChIP", lcex=0.9)
+  hexVP.abline(control$plot.vp, a=0, b=sum(binTest@tagCount)/sum(binTest@input), lwd=0.2)
+  
+  dev.copy(png, paste("mosaics/plots/", sample_file$X3[i], "_counts.png", sep=""))
+  dev.off()
+  
+  fitTest <- mosaicsFit(binTest, analysisType="IO", bgEst="rMOM")
+  plot(fitTest)
+  
+  dev.copy(png, paste("mosaics/plots/", sample_file$X3[i], "_fit.png", sep=""))
+  dev.off()
+  
+  peakTest <- mosaicsPeak(fitTest, signalModel="2S", FDR=0.01)
+  
+  export(peakTest, type="bed", filename=paste("mosaics/", sample_file$X3[i], ".bed", sep=""))
+  export(peakTest, type="txt", filename=paste("mosaics/", sample_file$X3[i],  ".txt", sep=""))
+  
+  sample_name_narrowP <- paste("data/", sample_file[i,1], sep = "")
+  ref_name_narrowP <- paste("data/", sample_file[i,2], sep = "")
+  
+  peakNarrow <- extractReads(peakTest, 
+                             chipFile=sample_name_narrowP, chipFileFormat="bam", chipPET=FALSE, chipFragLen=200, 
+                             controlFile=ref_name_narrowP, controlFileFormat="bam", controlPET=FALSE, controlFragLen=200)
+  
+  peakNarrow <- findSummit(peakNarrow)
+  
+  export(peakNarrow, type="narrowPeak", filename=paste("mosaics/", sample_file$X3[i],  ".narrowPeak", sep=""))
+}
+
+
+#Initial nearby peaks are merged if the distance (in bp) between them is less than 'maxgap'. 
+#Some initial peaks are removed if their lengths are shorter than 'minsize'.
+
+#If you use a bin size shorter than the average fragment length in the experiment, 
+#we recommend to set 'maxgap' to the average fragment length and 'minsize' to the bin size. 
+#This setting removes peaks that are too narrow (e.g., singletons). 
+#If you set the bin size to the average fragment length (or maybe bin size is larger than the average fragment length), 
+#we recommend setting 'minsize' to a value smaller than the average fragment length while leaving 'maxgap' the same as the average fragment length. 
+#This is to prevent filtering using 'minsize' because initial peaks would already be at a reasonable width. 
+
+
+# For pair-end ChIP-seq,,, (You have to use "sam" files, or error meaasage is shown!)
+
+sample_file <- read_csv("Meta_mosaics_2.csv", col_names = F)
+
+IP_files <- unique(sample_file$X1)
+for (i in 1:length(IP_files)){
+  constructBins(infile=paste("data/", IP_files[i], sep=""),
+                fileFormat="bam",
+                outfileLoc="mosaics/bins/",
+                byChr=FALSE,
+                binSize=200,
+                capping=0,
+                PET=TRUE)
+}
+
+WCE_files <- sample_file$X2
+for (i in 1:length(WCE_files)){
+  constructBins(infile=paste("data/", WCE_files[i], sep=""),
+                fileFormat="bam",
+                outfileLoc="mosaics/bins/",
+                byChr=FALSE,
+                binSize=200,
+                capping=0,
+                PET=TRUE)
+}
+
+for (i in 1:nrow(sample_file)) {
+  sample_name <- paste("mosaics/bins/", sample_file[i,1], sep = "")
+  sample_name <- str_replace(string = sample_name, pattern = ".bam", replacement = ".sam_bin200.txt")
+  ref_name <- paste("mosaics/bins/", sample_file[i,2], sep = "")
+  ref_name <- str_replace(string = ref_name, pattern = ".bam", replacement = ".sam_bin200.txt")
+  
+  print(paste("analyzing", sample_name, "against", ref_name))
+  
+  binTest <- readBins(type=c("chip", "input"), fileName= c(sample_name, ref_name))
+  count_data <- hexbin (binTest@input, binTest@tagCount, xbins=100)
+  control <- plot(count_data, trans=log, inv=exp, colramp=rainbow, xlab="WCE", ylab="ChIP", lcex=0.9)
+  hexVP.abline(control$plot.vp, a=0, b=sum(binTest@tagCount)/sum(binTest@input), lwd=0.2)
+  
+  dev.copy(png, paste("mosaics/plots/", sample_file$X3[i], "_counts.png", sep=""))
+  dev.off()
+  
+  fitTest <- mosaicsFit(binTest, analysisType="IO", bgEst="rMOM")
+  plot(fitTest)
+  
+  dev.copy(png, paste("mosaics/plots/", sample_file$X3[i], "_fit.png", sep=""))
+  dev.off()
+  
+  peakTest <- mosaicsPeak(fitTest, signalModel="2S", FDR=0.01)
+  
+  export(peakTest, type="bed", filename=paste("mosaics/", sample_file$X3[i], ".bed", sep=""))
+  export(peakTest, type="txt", filename=paste("mosaics/", sample_file$X3[i],  ".txt", sep=""))
+  #export(peakNarrow, type="narrowPeak", filename=paste("mosaics/", sample_file$X3[i],  ".narrowPeak", sep=""))
+  
+  #sample_name_narrowP <- paste("data/", sample_file[i,1], sep = "")
+  #ref_name_narrowP <- paste("data/", sample_file[i,2], sep = "")
+  
+  #peakNarrow <- extractReads(peakTest, 
+  #                           chipFile=sample_name_narrowP, chipFileFormat="sam", chipPET=TRUE,
+  #                           controlFile=ref_name_narrowP, controlFileFormat="sam", controlPET=TRUE)
+  
+  #peakNarrow <- findSummit(peakNarrow)
+  
+  #export(peakNarrow, type="narrowPeak", filename=paste("mosaics/", sample_file$X3[i],  ".narrowPeak", sep=""))
+}
+
+
+
