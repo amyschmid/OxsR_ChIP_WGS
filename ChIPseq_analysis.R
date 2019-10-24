@@ -1,6 +1,6 @@
-############# TbsP ChIP-seq analysis #############
+############# OxsR ChIP-seq analysis #############
 
-### Unzip raw data in local laptop using Terminal 
+### Unzip raw data
 #   $ gunzip *.gz
 
 
@@ -20,26 +20,19 @@
 
 ### Index and Alignment in local laptop using Terminal
 #   $ bowtie2-build HVO.fna HVO
-#   $ bowtie2 -x ./Index/HVO -1 tbsPHA_1_IP_S41_S47_R1_val_1.fq -2 tbsPHA_1_IP_S41_S47_R2_val_2.fq -S tbsPHA_1_IP_S41_S47.sam
+#   $ bowtie2 -x ./Index/HVO -1 H26_1_IP_S74_S80_R1_val_1.fq -2 H26_1_IP_S74_S80_R2_val_2.fq -S ./sam/H26_1_IP_S74_S80.sam
+#     = for f1 in *R1_val_1.fq; do for f2 in ${f1%%_R1_val_1.fq}"_R2_val_2.fq" ; do bowtie2 -x ./Index/HVO -1 $f1 -2 $f2 -S ./sam/$f1.sam ; done; done
 
 
-
-
-
-  
 
 ### Bam file generation
 # 1)  $ samtools view -bS S49_H26_1_glc_IP.sam > S49_H26_1_glc_IP.bam
 #     = for file in ./*.sam; do samtools view -bS $file -o ./bam/$file.bam ; done
 
-#  or $ samtools view -bS -f 0x2 S49_H26_1_glc_IP.sam > S49_H26_1_glc_IP.bam
-#     = for file in ./*.sam; do samtools view -bS -f 0x2 $file -o ./bam/$file.bam ; done
-
-
 
 # 2)  $ samtools sort S49_H26_1_glc_IP.bam > S49_H26_1_glc_IP_sorted.bam
 #     = for file in ./*.bam; do samtools sort $file -o ./bam_sort/$file.sort.bam ; done
-#     *Change the file name from ~.sam.bam.sort.bam to(->) ~_sorted.bam
+#     *Change the file name from ~.sam.bam.sort.bam to(->) ~_sort.bam
 
 
 # 3)  $ samtools index S49_H26_1_glc_IP_sorted.bam
@@ -60,16 +53,22 @@
 # https://github.com/taoliu/MACS
 
 
-#macs2 callpeak -t data/H26_1_glc_IP_S43_S49_sorted.bam -c data/H26_1_glc_WCE_S46_S52_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n H26_1_glc 2> macs2/H26_1_glc-macs2.log
-#macs2 callpeak -t data/H26_2_glc_IP_S85_S91_sorted.bam -c data/H26_2_glc_WCE_S64_S70_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n H26_2_glc 2> macs2/H26_2_glc-macs2.log
-#macs2 callpeak -t data/tbsPHA_1_glc_IP_S79_S85_sorted.bam -c data/tbsPHA_1_glc_WCE_S48_S54_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_1_glc 2> macs2/tbsPHA_1_glc-macs2.log
+#macs2 callpeak -t H26_1_IP_S74_S80_sort.bam -c H26_1_WCE_S65_S71_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n H26_1_no 2> macs2/H26_1_no-macs2.log
+#macs2 callpeak -t H26_2_IP_S91_S97_sort.bam -c H26_2_WCE_S95_S43_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n H26_2_no 2> macs2/H26_2_no-macs2.log
+#macs2 callpeak -t oxsRHA_1_IP_S40_S46_sort.bam -c oxsRHA_1_WCE_S90_S96_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_1_no 2> macs2/oxsRHA_1_no-macs2.log
+#macs2 callpeak -t oxsRHA_2_IP_S57_S63_sort.bam -c oxsRHA_2_WCE_S70_S76_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_2_no 2> macs2/oxsRHA_2_no-macs2.log
+#macs2 callpeak -t oxsRHA_3_IP_S59_S65_sort.bam -c oxsRHA_3_WCE_S96_S44_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_3_no 2> macs2/oxsRHA_3_no-macs2.log
+#macs2 callpeak -t oxsRHA_4_IP_S82_S88_sort.bam -c oxsRHA_4_WCE_S80_S86_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_4_no 2> macs2/oxsRHA_4_no-macs2.log
 
-#macs2 callpeak -t data/tbsPHA_2_glc_IP_S45_S51_sorted.bam -c data/tbsPHA_2_glc_WCE_S54_S60_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_2_glc 2> macs2/tbsPHA_2_glc-macs2.log
-#macs2 callpeak -t data/tbsPHA_3_glc_IP_S72_S78_sorted.bam -c data/tbsPHA_3_glc_WCE_S66_S72_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_3_glc 2> macs2/tbsPHA_3_glc-macs2.log
-#macs2 callpeak -t data/tbsPHA_4_glc_IP_S78_S84_sorted.bam -c data/tbsPHA_4_glc_WCE_S71_S77_sorted.bam -f BAMPE -g 4.1e6 --outdir macs2 -n tbsPHA_4_glc 2> macs2/tbsPHA_4_glc-macs2.log
+#macs2 callpeak -t H26_1_NaOCl_IP_S81_S87_sort.bam -c H26_1_NaOCl_WCE_S86_S92_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n H26_1_NaOCl 2> macs2/H26_1_NaOCl-macs2.log
+#macs2 callpeak -t H26_2_NaOCl_IP_S60_S66_sort.bam -c H26_2_NaOCl_WCE_S51_S57_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n H26_2_NaOCl 2> macs2/H26_2_NaOCl-macs2.log
+#macs2 callpeak -t oxsRHA_1_NaOCl_IP_S83_S89_sort.bam -c oxsRHA_1_NaOCl_WCE_S49_S55_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_1_NaOCl 2> macs2/oxsRHA_1_NaOCl-macs2.log
+#macs2 callpeak -t oxsRHA_2_NaOCl_IP_S89_S95_sort.bam -c oxsRHA_2_NaOCl_WCE_S42_S48_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_2_NaOCl 2> macs2/oxsRHA_2_NaOCl-macs2.log
+#macs2 callpeak -t oxsRHA_3_NaOCl_IP_S77_S83_sort.bam -c oxsRHA_3_NaOCl_WCE_S39_S45_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_3_NaOCl 2> macs2/oxsRHA_3_NaOCl-macs2.log
+#macs2 callpeak -t oxsRHA_4_NaOCl_IP_S87_S93_sort.bam -c oxsRHA_4_NaOCl_WCE_S84_S90_sort.bam -f BAMPE -g 4.1e6 -q 0.05 --outdir macs2 -n oxsRHA_4_NaOCl 2> macs2/oxsRHA_4_NaOCl-macs2.log
 
 
-
+     
 
 
 
@@ -78,7 +77,7 @@
 
 
 ### Peakcalling quality control I by ChIP_QC 
-BiocManager::install(c("GenomicRanges","rtracklayer", "ChIPQC"))
+#BiocManager::install(c("GenomicRanges","rtracklayer", "ChIPQC"))
 
 # To fix a bug in QCmetrics(ChIPQCsample) which will cause the error: "names' attribute [9] must be the same length as the vector [7]" (https://github.com/shengqh/ChIPQC)
 library(devtools)
@@ -103,13 +102,13 @@ hvo <- list(version="",
             promoters500 = pro500)
 
 # load sample file
-samples <- as.data.frame(read_csv("Meta_chipqc_2.csv"))
+samples <- as.data.frame(read_csv("Meta_chipqc_NaOCl_1.csv"))
 
 # create and execute the experiment!
 #register(SerialParam()) # prevents BiocParallel error (Run this if you use Windows!)
 exp <- ChIPQC(experiment = samples, annotation = hvo)
 exp
-ChIPQCreport(exp, reportFolder ="ChIPQC report_test", reportName="ChIPQC_gc")
+ChIPQCreport(exp, reportFolder ="ChIPQC report", reportName="ChIPQC_gc")
 
 mean(head(as.data.frame(QCmetrics(exp))$FragL, n=8))
 mean(tail(as.data.frame(QCmetrics(exp))$FragL, n=8))
@@ -131,9 +130,9 @@ QCmetadata(exp)
 
 # Single sample assessment 
 tbsPHA_1_glc_IP = ChIPQCsample("data/tbsPHA_1_glc_IP_S79_S85_sorted.bam", 
-                               peaks="mosaics/HVO_tbsPHA_glc_1.narrowPeak", annotation = hvo)
+                               peaks="macs2/tbsPHA_1_glc_peaks.narrowPeak", annotation = hvo)
 tbsPHA_1_glc_WCE = ChIPQCsample("data/tbsPHA_1_glc_WCE_S48_S54_sorted.bam", 
-                               peaks="mosaics/HVO_tbsPHA_glc_1.narrowPeak", annotation = hvo)
+                               peaks="macs2/tbsPHA_1_glc_peaks.narrowPeak", annotation = hvo)
 tbsPHA_1_glc_IP
 tbsPHA_1_glc_WCE
 
@@ -146,22 +145,40 @@ QCmetrics(tbsPHA_1_glc_WCE)
 
 
 
-### Peakcalling quality control II by IDR
+### Peak calling quality control II by IDR
 # https://github.com/nboley/idr
 # Required r files: 1) batch-consistency-analysis.r, 2) batch-consistency-plot.r, 3) functions-all-clayton-12-13.r
 # Required genome_table for the strain (i.e., Haloferax volcanii)
-#     $ Rscript batch-consistency-analysis.r H26-rep1_peaks.narrowPeak H26-rep2_peaks.narrowPeak -1 ./IDR_analysis/H26_1vs_H26_2 0 F p.value
-#     $ Rscript batch-consistency-plot.r 6 ./IDR_output/tbsP ./IDR_analysis/tbsP1_vs_tbsP2 ./IDR_analysis/tbsP1_vs_tbsP3 ./IDR_analysis/tbsP1_vs_tbsP4 ./IDR_analysis/tbsP2_vs_tbsP3 ./IDR_analysis/tbsP2_vs_tbsP4 ./IDR_analysis/tbsP3_vs_tbsP4
+# Run the code below in terminal
 
+#---- no oxidative stress
+#  $ Rscript batch-consistency-analysis.r H26_1_no_peaks.narrowPeak H26_2_no_peaks.narrowPeak -1 ./IDR_analysis/H26_1vs_H26_2 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_1_no_peaks.narrowPeak oxsRHA_2_no_peaks.narrowPeak -1 ./IDR_analysis/oxsR_1_vs_oxsR_2 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_1_no_peaks.narrowPeak oxsRHA_3_no_peaks.narrowPeak -1 ./IDR_analysis/oxsR_1_vs_oxsR_3 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_1_no_peaks.narrowPeak oxsRHA_4_no_peaks.narrowPeak -1 ./IDR_analysis/oxsR_1_vs_oxsR_4 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_2_no_peaks.narrowPeak oxsRHA_3_no_peaks.narrowPeak -1 ./IDR_analysis/oxsR_2_vs_oxsR_3 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_2_no_peaks.narrowPeak oxsRHA_4_no_peaks.narrowPeak -1 ./IDR_analysis/oxsR_2_vs_oxsR_4 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_3_no_peaks.narrowPeak oxsRHA_4_no_peaks.narrowPeak -1 ./IDR_analysis/oxsR_3_vs_oxsR_4 0 F p.value
 
+#  $ Rscript batch-consistency-plot.r 6 ./IDR_output/tbsP ./IDR_analysis/oxsR_1_vs_oxsR_2 ./IDR_analysis/oxsR_1_vs_oxsR_3 ./IDR_analysis/oxsR_1_vs_oxsR_4 ./IDR_analysis/oxsR_2_vs_oxsR_3 ./IDR_analysis/oxsR_2_vs_oxsR_4 ./IDR_analysis/oxsR_3_vs_oxsR_4
+
+#---- NaOCl present
+#  $ Rscript batch-consistency-analysis.r oxsRHA_1_NaOCl_peaks.narrowPeak oxsRHA_2_NaOCl_peaks.narrowPeak -1 ./IDR_analysis/oxsR_1_vs_oxsR_2 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_1_NaOCl_peaks.narrowPeak oxsRHA_3_NaOCl_peaks.narrowPeak -1 ./IDR_analysis/oxsR_1_vs_oxsR_3 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_1_NaOCl_peaks.narrowPeak oxsRHA_4_NaOCl_peaks.narrowPeak -1 ./IDR_analysis/oxsR_1_vs_oxsR_4 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_2_NaOCl_peaks.narrowPeak oxsRHA_3_NaOCl_peaks.narrowPeak -1 ./IDR_analysis/oxsR_2_vs_oxsR_3 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_2_NaOCl_peaks.narrowPeak oxsRHA_4_NaOCl_peaks.narrowPeak -1 ./IDR_analysis/oxsR_2_vs_oxsR_4 0 F p.value
+#  $ Rscript batch-consistency-analysis.r oxsRHA_3_NaOCl_peaks.narrowPeak oxsRHA_4_NaOCl_peaks.narrowPeak -1 ./IDR_analysis/oxsR_3_vs_oxsR_4 0 F p.value
+
+#  $ Rscript batch-consistency-plot.r 6 ./IDR_output/tbsP ./IDR_analysis/oxsR_1_vs_oxsR_2 ./IDR_analysis/oxsR_1_vs_oxsR_3 ./IDR_analysis/oxsR_1_vs_oxsR_4 ./IDR_analysis/oxsR_2_vs_oxsR_3 ./IDR_analysis/oxsR_2_vs_oxsR_4 ./IDR_analysis/oxsR_3_vs_oxsR_4
 
 
 
 
 ### Annotation and identification of peak on genome
 # http://bioconductor.org/packages/devel/bioc/vignettes/ChIPseeker/inst/doc/ChIPseeker.html
-BiocManager::install("ChIPseeker")
-BiocManager::install("clusterProfiler")
+#BiocManager::install("ChIPseeker")
+#BiocManager::install("clusterProfiler")
 
 library(ChIPseeker)
 library(clusterProfiler)
@@ -170,9 +187,11 @@ library(GenomicRanges)
 library(IRanges)
 
 # Load data (*Remove "the header" in the bed file or message like as Error in .Call2("solve_user_SEW0", start, end, width, PACKAGE = "IRanges") : In range 1: at least two out of 'start', 'end', and 'width', must be supplied.)
-samplefiles <- list.files("./mosaics/fragL200", pattern= ".bed", full.names=TRUE)
+samplefiles <- list.files("./1_macs2", pattern= ".narrowPeak", full.names=TRUE) #Input file I
+#samplefiles <- list.files("./macs2", pattern= ".bed", full.names=TRUE)        #Input file II
 samplefiles <- as.list(samplefiles)
-names(samplefiles) <- c("tbsP_1", "tbsP_2", "tbsP_3", "tbsP_4", "H26_2")
+#names(samplefiles) <- c("H26_1", "H26_2", "oxsRHA_1", "oxsRHA_2", "oxsRHA_3", "oxsRHA_4")
+names(samplefiles) <- c("oxsRHA_1", "oxsRHA_2", "oxsRHA_3", "oxsRHA_4")
 
 # Database construction for the index genome from gff file deposited in NCBI
 library(GenomicFeatures)
@@ -180,10 +199,10 @@ hvo_TxDb <- makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff",
                             organism="Haloferax volcanii", format = "gff")
 
 # Analyze data one-by-one -> Recommend to go below for the group analysis
-peakAnnoList <- lapply(samplefiles[[2]], annotatePeak, TxDb=hvo_TxDb, 
+peakAnnoList <- lapply(samplefiles[[3]], annotatePeak, TxDb=hvo_TxDb, 
                        tssRegion=c(-500, 500), verbose=FALSE)
 
-peak <- readPeakFile(samplefiles[[2]])
+peak <- readPeakFile(samplefiles[[3]])
 peak
 
 covplot(peak, weightCol="V5")
@@ -193,13 +212,13 @@ tagMatrix <- getTagMatrix(peak, windows=promoter)
 
 tagHeatmap(tagMatrix, xlim=c(-500, 500), color="red")
 
-peakHeatmap(samplefiles[[2]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
-plotAvgProf2(samplefiles[[2]], TxDb=hvo_TxDb, upstream=500, downstream=500,
+peakHeatmap(samplefiles[[3]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
+plotAvgProf2(samplefiles[[3]], TxDb=hvo_TxDb, upstream=500, downstream=500,
              xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency")
 
 plotAvgProf(tagMatrix, xlim=c(-500, 500), conf = 0.95, resample = 500)
 
-peakAnno <- annotatePeak(samplefiles[[2]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
+peakAnno <- annotatePeak(samplefiles[[3]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
                          genomicAnnotationPriority = c("Promoter", "5UTR", "3UTR", "Exon", "Intron", "Downstream", "Intergenic"),
                          addFlankGeneInfo = TRUE, verbose=FALSE)
 
@@ -230,8 +249,8 @@ tagHeatmap(tagMatrixList, xlim=c(-500, 500), color=NULL)
 plotAnnoBar(peakAnnoList)
 plotDistToTSS(peakAnnoList)
 
-gene.list <- as.data.frame(peakAnnoList[[1]])
-write.csv(gene.list, "ChIP_seq_genes_tbsP_1.csv")  # Results
+gene.list <- as.data.frame(peakAnnoList[[4]])
+write.csv(gene.list, "Peak_anno_oxsRHA_4.csv")  # Results
 
 
 
@@ -243,10 +262,12 @@ write.csv(gene.list, "ChIP_seq_genes_tbsP_1.csv")  # Results
 #     $ bedtools intersect -f 0.5 -r -a replicate1.bed -b replicate2.bed > OUTFILE.bed
 
 # for 3+ replicate comparisons, we need to approach this combinatorically:
-#     $ bedtools intersect -f 0.5 -r -wb -names B C D -a HVO_tbsPHA_glc_1.bed -b HVO_tbsPHA_glc_2.bed HVO_tbsPHA_glc_3.bed HVO_tbsPHA_glc_4.bed > intersectABCD.bed
+#     $ bedtools intersect -f 0.5 -r -wb -names B C D -a oxsRHA_1_NaOCl_summits.bed -b oxsRHA_2_NaOCl_summits.bed oxsRHA_3_NaOCl_summits.bed oxsRHA_4_NaOCl_summits.bed > intersectABCD_bed.bed
+#     $ bedtools intersect -f 0.5 -r -wb -names B C D -a oxsRHA_1_NaOCl_peaks.narrowPeak -b oxsRHA_2_NaOCl_peaks.narrowPeak oxsRHA_3_NaOCl_peaks.narrowPeak oxsRHA_4_NaOCl_peaks.narrowPeak > intersectABCD_narrowPeak.bed
 # Code above gives peaks that are in ABCD, ABC, ABD, ACD, AB, AC, AD
 
-#     $ bedtools intersect -f 0.5 -r -wb -names C D A -a HVO_tbsPHA_glc_2.bed -b HVO_tbsPHA_glc_3.bed HVO_tbsPHA_glc_4.bed HVO_tbsPHA_glc_1.bed > intersectBCDA.bed
+#     $ bedtools intersect -f 0.5 -r -wb -names C D A -a oxsRHA_2_NaOCl_summits.bed -b oxsRHA_3_NaOCl_summits.bed oxsRHA_4_NaOCl_summits.bed oxsRHA_1_NaOCl_summits.bed > intersectBCDA_bed.bed
+#     $ bedtools intersect -f 0.5 -r -wb -names C D A -a oxsRHA_2_NaOCl_peaks.narrowPeak -b oxsRHA_3_NaOCl_peaks.narrowPeak oxsRHA_4_NaOCl_peaks.narrowPeak oxsRHA_1_NaOCl_peaks.narrowPeak > intersectBCDA_narrowPeak.bed
 # Code above gives peaks that are in BCD, BC, BD
 
 # This is not essential if you are only interested in peaks that are conserved in 3+ replicates
@@ -261,9 +282,9 @@ write.csv(gene.list, "ChIP_seq_genes_tbsP_1.csv")  # Results
 
 
 
-### Merged bed file analysis
+### Analysis of the merged bed file (at least three bio reps)
 # Load data 
-samplefiles <- list.files("./mosaics", pattern= ".bed", full.names=TRUE)
+samplefiles <- list.files("./temp/", pattern= ".bed", full.names=TRUE)
 samplefiles <- as.list(samplefiles)
 
 # Database construction for the index genome from gff file deposited in NCBI
@@ -272,10 +293,10 @@ hvo_TxDb <- makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff",
                             organism="Haloferax volcanii", format = "gff")
 
 # Analyze data one-by-one -> Recommend to go below for the group analysis
-peakAnnoList <- lapply(samplefiles[[4]], annotatePeak, TxDb=hvo_TxDb, 
+peakAnnoList <- lapply(samplefiles[[1]], annotatePeak, TxDb=hvo_TxDb, 
                        tssRegion=c(-500, 500), verbose=FALSE)
 
-peak <- readPeakFile(samplefiles[[4]])
+peak <- readPeakFile(samplefiles[[1]])
 peak
 
 covplot(peak, weightCol="V5")
@@ -283,24 +304,23 @@ covplot(peak, weightCol="V5")
 promoter <- getPromoters(TxDb=hvo_TxDb, upstream=500, downstream=500)
 tagMatrix <- getTagMatrix(peak, windows=promoter)
 
-peakHeatmap(samplefiles[[4]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
-plotAvgProf2(samplefiles[[4]], TxDb=hvo_TxDb, upstream=500, downstream=500,
+peakHeatmap(samplefiles[[1]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
+plotAvgProf2(samplefiles[[1]], TxDb=hvo_TxDb, upstream=500, downstream=500,
              xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency")
 
 plotAvgProf(tagMatrix, xlim=c(-500, 500), conf = 0.95, resample = 500)
 
-peakAnno <- annotatePeak(samplefiles[[4]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
+peakAnno <- annotatePeak(samplefiles[[1]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
                          genomicAnnotationPriority = c("Promoter", "5UTR", "3UTR", "Exon", "Intron", "Downstream", "Intergenic"),
                          addFlankGeneInfo = TRUE, verbose=FALSE)
 
 gene.list <- as.data.frame(peakAnno)
-write.csv(gene.list, "ChIP_seq_genes_BCDA.csv")  # Results
+write.csv(gene.list, "Significant_peaks_from3biorep.csv")  # Results
+
 
 # Matching for a gene name replcement and a significant gene note
-rm(list = ls()) 
-
 # you need to add column names as "Old_locus", "Uniprot" and "Protein_name" in the .csv file
-raw.reads <- read.csv("ChIP_seq_genes_BCDA.csv")
+raw.reads <- read.csv("Significant_peaks_from3biorep_noNaOCl_manualcheck.csv")
 reference <- read.csv("DS2_uniprot_2.csv")
 
 #indicate a significant gene by "Yes" in the raw.reads file
@@ -314,7 +334,8 @@ raw.reads$Old_locus <- reference$Old_locus[match(raw.reads$transcriptId, referen
 raw.reads$Uniprot <- reference$Entry[match(raw.reads$Old_locus, reference$Gene_uniprot)]
 raw.reads$Protein_name <- reference$Protein_name[match(raw.reads$Uniprot, reference$Entry)]
 
-write.csv(raw.reads, "ChIP_seq_genes_BCDA_annoated.csv") 
+write.csv(raw.reads, "Significant_peaks_from3biorep_anno.csv") 
+
 
 
 
@@ -322,27 +343,165 @@ write.csv(raw.reads, "ChIP_seq_genes_BCDA_annoated.csv")
 
 
 ### BigWig file generation (normalized by WCE)
-#   $ bamCompare -b1 ./data/H26_1_glc_IP_S43_S49_sorted.bam -b2 ./data/H26_1_glc_WCE_S46_S52_sorted.bam -o ./visualization/bigWig/H26_1_glc_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./visualization/bigWig/H26_1_glc_bamCompare.log
+#------no oxidative stress
+#   $ bamCompare -b1 ./0_data/H26_1_IP_S74_S80_sort.bam -b2 ./0_data/H26_1_WCE_S65_S71_sort.bam -o ./6_bigWig/H26_1_no_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/H26_1_no_bamCompare.log
+#   $ bamCompare -b1 ./0_data/H26_2_IP_S91_S97_sort.bam -b2 ./0_data/H26_2_WCE_S95_S43_sort.bam -o ./6_bigWig/H26_2_no_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/H26_2_no_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_1_IP_S40_S46_sort.bam -b2 ./0_data/oxsRHA_1_WCE_S90_S96_sort.bam -o ./6_bigWig/oxsRHA_1_no_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_1_no_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_2_IP_S57_S63_sort.bam -b2 ./0_data/oxsRHA_2_WCE_S70_S76_sort.bam -o ./6_bigWig/oxsRHA_2_no_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_2_no_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_3_IP_S59_S65_sort.bam -b2 ./0_data/oxsRHA_3_WCE_S96_S44_sort.bam -o ./6_bigWig/oxsRHA_3_no_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_3_no_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_4_IP_S82_S88_sort.bam -b2 ./0_data/oxsRHA_4_WCE_S80_S86_sort.bam -o ./6_bigWig/oxsRHA_4_no_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_4_no_bamCompare.log
+
+#------with NaOCl
+#   $ bamCompare -b1 ./0_data/H26_1_NaOCl_IP_S81_S87_sort.bam -b2 ./0_data/H26_1_NaOCl_WCE_S86_S92_sort.bam -o ./6_bigWig/H26_1_NaOCl_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/H26_1_NaOCl_bamCompare.log
+#   $ bamCompare -b1 ./0_data/H26_2_NaOCl_IP_S60_S66_sort.bam -b2 ./0_data/H26_2_NaOCl_WCE_S51_S57_sort.bam -o ./6_bigWig/H26_2_NaOCl_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/H26_2_NaOCl_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_1_NaOCl_IP_S83_S89_sort.bam -b2 ./0_data/oxsRHA_1_NaOCl_WCE_S49_S55_sort.bam -o ./6_bigWig/oxsRHA_1_NaOCl_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_1_NaOCl_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_2_NaOCl_IP_S89_S95_sort.bam -b2 ./0_data/oxsRHA_2_NaOCl_WCE_S42_S48_sort.bam -o ./6_bigWig/oxsRHA_2_NaOCl_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_2_NaOCl_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_3_NaOCl_IP_S77_S83_sort.bam -b2 ./0_data/oxsRHA_3_NaOCl_WCE_S39_S45_sort.bam -o ./6_bigWig/oxsRHA_3_NaOCl_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_3_NaOCl_bamCompare.log
+#   $ bamCompare -b1 ./0_data/oxsRHA_4_NaOCl_IP_S87_S93_sort.bam -b2 ./0_data/oxsRHA_4_NaOCl_WCE_S84_S90_sort.bam -o ./6_bigWig/oxsRHA_4_NaOCl_Norm.bw --binSize 20 --normalizeUsing BPM --scaleFactorsMethod None --smoothLength 60 --extendReads 150 --centerReads -p 6 2> ./6_bigWig/oxsRHA_4_NaOCl_bamCompare.log
 
 
 
 
 
 
-
-
-### Identify the conserved motif by DREME (http://meme-suite.org/tools/dreme)
+### Identify the conserved motif by MEME or DREME (http://meme-suite.org)
 # Extract the first three columns for 
-#     $ cut -f 1,2,3 intersectABCD.bed  > intersectABCD-simple.bed
-#     $ cut -f 1,2,3 intersectBCDA.bed  > intersectBCDA-simple.bed
+#     $ cut -f 1,2,3 intersect_3biorep_narrowPeak.bed  > intersect_3biorep_narrowPeak-simple.bed
 
-#     $ bedtools getfasta -fi HVO.fa -bed intersectABCD-simple.bed -fo intersectABCD-simple-dreme.fasta
-#     $ bedtools getfasta -fi HVO.fa -bed intersectBCDA-simple.bed -fo intersectBCDA-simple-dreme.fasta
+#     $ bedtools getfasta -fi HVO.fa -bed intersect_3biorep_narrowPeak-simple.bed -fo intersect_3biorep-simple-dreme.fasta
 
 
 
 
 
+
+
+### A differential enrichment by DiffBind
+# http://bioconductor.org/packages/release/bioc/vignettes/DiffBind/inst/doc/DiffBind.pdf
+# https://hbctraining.github.io/In-depth-NGS-Data-Analysis-Course/sessionV/lessons/08_diffbind_differential_peaks.html
+
+library(DiffBind)
+library(tidyverse)
+
+samples <- read.csv("Meta_diffbind.csv")
+
+dbObj <- dba(sampleSheet = samples)
+
+#Take the alignment files and compute count information for each of the peaks/regions in the consensus set
+dbObj <- dba.count(dbObj, bUseSummarizeOverlaps=TRUE)
+
+#PCA plot and correlation heatmap using all the consensus sites
+dba.plotPCA(dbObj,  attributes=DBA_CONDITION, label=DBA_ID)
+plot(dbObj)
+
+#Establishing a contrast to show which samples we want to compare to one another
+dbObj <- dba.contrast(dbObj, categories=DBA_CONDITION)
+
+#Performing the differential enrichment analysis
+dbObj <- dba.analyze(dbObj, method=DBA_ALL_METHODS)
+dba.show(dbObj, bContrasts=T)
+dba.plotPCA(dbObj, contrast=1, method=DBA_DESEQ2, attributes=DBA_CONDITION, label=DBA_ID)
+dba.plotVenn(dbObj,contrast=1,method=DBA_ALL_METHODS)
+
+#MA plots - the effect of normalization on data, as well as seeing which of the data points are being identified as differentially bound.
+dba.plotMA(dbObj, method=DBA_DESEQ2) #red points: the sites identified by DESeq2 as differentially bound (FDR < 0.05)
+dba.plotMA(dbObj, bXY=TRUE)
+
+#How the reads are distributed amongst the different classes of differentially bound sites and sample groups
+pvals <- dba.plotBox(dbObj)
+
+#Extract the full results from DESeq2
+res_deseq <- dba.report(dbObj, method=DBA_DESEQ2, contrast = 1, th=1)
+out <- as.data.frame(res_deseq)
+write.csv(out, "DiffBind_result.csv")
+write.table(out, file="DiffBind_result.bed", sep="\t", quote=F, row.names=F, col.names=F)
+# - Conc: mean read concentration over all the samples (the default calculation uses log2 normalized ChIP read counts with control read counts subtracted)
+# - Conc_no_NaOCl: mean concentration over the first group
+# - Fold: shows the difference in mean concentrations between the two groups, 
+#   with a positive value indicating increased binding affinity in the first group
+#   with a negative value indicating increased binding affinity in the second group.
+
+DiffBind_sig_enrich <- out %>% 
+  filter(FDR < 0.05 & abs(Fold) > 1)
+write.csv(DiffBind_sig_enrich, "DiffBind_result_sig.csv")
+
+# Create bed files for each keeping only significant peaks (FDR < 0.05, Fold >1)
+DiffBind_sig_enrich <- out %>% 
+  filter(FDR < 0.05 & abs(Fold) > 1) %>% 
+  select(seqnames, start, end)
+write.table(DiffBind_sig_enrich, file="DiffBind_result_sig.bed", sep="\t", quote=F, row.names=F, col.names=F)
+
+### Followed by the annotation of data from the DiffBind
+library(ChIPseeker)
+library(clusterProfiler)
+library(AnnotationDbi)
+library(GenomicRanges)
+library(IRanges)
+
+# Load data 
+samplefiles <- list.files("./8_DiffBind/", pattern= ".bed", full.names=TRUE)
+samplefiles <- as.list(samplefiles)
+
+# Database construction for the index genome from gff file deposited in NCBI
+library(GenomicFeatures)
+hvo_TxDb <- makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff", 
+                            organism="Haloferax volcanii", format = "gff")
+
+# Analyze data one-by-one -> Recommend to go below for the group analysis
+peakAnnoList <- lapply(samplefiles[[2]], annotatePeak, TxDb=hvo_TxDb, 
+                       tssRegion=c(-500, 500), verbose=FALSE)
+
+peak <- readPeakFile(samplefiles[[2]])
+peak
+
+covplot(peak, weightCol="V6")
+
+promoter <- getPromoters(TxDb=hvo_TxDb, upstream=500, downstream=500)
+tagMatrix <- getTagMatrix(peak, windows=promoter)
+
+peakHeatmap(samplefiles[[2]], TxDb=hvo_TxDb, upstream=500, downstream=500, color="red")
+
+plotAvgProf2(samplefiles[[2]], TxDb=hvo_TxDb, upstream=500, downstream=500,
+             xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency")
+
+peakAnno <- annotatePeak(samplefiles[[2]], tssRegion=c(-500, 500), TxDb=hvo_TxDb, 
+                         genomicAnnotationPriority = c("Promoter", "5UTR", "3UTR", "Exon", "Intron", "Downstream", "Intergenic"),
+                         addFlankGeneInfo = TRUE, verbose=FALSE)
+
+gene.list <- as.data.frame(peakAnno)
+write.csv(gene.list, "DiffBind_peaks.csv")  # Results
+
+
+# Matching for a gene name replcement and a significant gene note
+rm(list = ls()) 
+
+# you need to add column names as "Old_locus", "Uniprot" and "Protein_name" in the .csv file
+raw.reads <- read.csv("DiffBind_peaks.csv")
+reference <- read.csv("DS2_uniprot_2.csv")
+
+#indicate a significant gene by "Yes" in the raw.reads file
+# a: gene name in the signif.gene file
+# b: significant gene in the signif.gene file
+# c: gene name in the raw.reads file
+# d: Yes in the raw.reads file
+#    d    <-                 b  [match( c , a)]
+
+raw.reads$Old_locus <- reference$Old_locus[match(raw.reads$transcriptId, reference$Locus)]
+raw.reads$Uniprot <- reference$Entry[match(raw.reads$Old_locus, reference$Gene_uniprot)]
+raw.reads$Protein_name <- reference$Protein_name[match(raw.reads$Uniprot, reference$Entry)]
+
+write.csv(raw.reads, "DiffBind_peaks_anno.csv") 
+
+
+#Input the peak location from the manual investigation into the DiffBind result
+raw.reads <- read.csv("DiffBind_peaks_anno.csv")
+reference1 <- read.csv("Significant_peaks_noNaOCl_manualcheck.csv")
+reference2 <- read.csv("Significant_peaks_NaOCl_manualcheck.csv")
+
+raw.reads$annotation_noNaOCl <- reference1$annotation[match(raw.reads$geneId, reference1$geneId)]
+raw.reads$annotation_NaOCl <- reference2$annotation[match(raw.reads$geneId, reference2$geneId)]
+
+write.csv(raw.reads, "DiffBind_peaks_anno_2.csv") 
 
 
 
