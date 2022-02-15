@@ -29,5 +29,5 @@ BiocManager::install("IRanges")
 BiocManager::install("AnnotationHub")
 ```
 -Installation of packages, downloading raw sequencing data ([Accession #: PRJNA806939](https://www.ncbi.nlm.nih.gov/bioproject/806939)) and [reference genome of H. volcanii](https://www.ncbi.nlm.nih.gov/genome/?term=haloferax+volcanii) <br/>
--Open the Rmd file contains command lines for the analysis
+-Open the Rmd file contains command lines for the analysis <br/>
 -Run analysis using raw data and [metadata](https://github.com/sungminhwang-duke/OxsR_ChIP_WGS/tree/master/Meta_data) files deposited <br/>
