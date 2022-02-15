@@ -1,0 +1,5 @@
+SampleID,Tissue,Factor,Condition,Replicate,bamReads,ControlID,bamControl,Peaks,PeakCaller
+oxsRHA_1_NaOCl_IP,HVO,oxsR,NaOCl,1,0_data/oxsRHA_1_NaOCl_IP_S83_S89_sort.bam,oxsRHA_1_NaOCl_WCE,0_data/oxsRHA_1_NaOCl_WCE_S49_S55_sort.bam,1_mosaics_NaOCl/HVO_oxsRHA_NaOCl_1.bed,bed
+oxsRHA_2_NaOCl_IP,HVO,oxsR,NaOCl,2,0_data/oxsRHA_2_NaOCl_IP_S89_S95_sort.bam,oxsRHA_2_NaOCl_WCE,0_data/oxsRHA_2_NaOCl_WCE_S42_S48_sort.bam,1_mosaics_NaOCl/HVO_oxsRHA_NaOCl_2.bed,bed
+oxsRHA_3_NaOCl_IP,HVO,oxsR,NaOCl,3,0_data/oxsRHA_3_NaOCl_IP_S77_S83_sort.bam,oxsRHA_3_NaOCl_WCE,0_data/oxsRHA_3_NaOCl_WCE_S39_S45_sort.bam,1_mosaics_NaOCl/HVO_oxsRHA_NaOCl_3.bed,bed
+oxsRHA_4_NaOCl_IP,HVO,oxsR,NaOCl,4,0_data/oxsRHA_4_NaOCl_IP_S87_S93_sort.bam,oxsRHA_4_NaOCl_WCE,0_data/oxsRHA_4_NaOCl_WCE_S84_S90_sort.bam,1_mosaics_NaOCl/HVO_oxsRHA_NaOCl_4.bed,bed

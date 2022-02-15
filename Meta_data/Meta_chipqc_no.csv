@@ -1,0 +1,7 @@
+SampleID,Tissue,Factor,Condition,Replicate,bamReads,ControlID,bamControl,Peaks,PeakCaller
+WT_1_IP,HVO,WT,no_NaOCl,1,0_data/H26_1_IP_S74_S80_sort.bam,WT_1_WCE,0_data/H26_1_WCE_S65_S71_sort.bam,1_mosaics_no/HVO_WT_1.bed,bed
+WT_2_IP,HVO,WT,no_NaOCl,2,0_data/H26_2_IP_S91_S97_sort.bam,WT_2_WCE,0_data/H26_2_WCE_S95_S43_sort.bam,1_mosaics_no/HVO_WT_2.bed,bed
+oxsRHA_1_IP,HVO,oxsR,no_NaOCl,1,0_data/oxsRHA_1_IP_S40_S46_sort.bam,oxsRHA_1_WCE,0_data/oxsRHA_1_WCE_S90_S96_sort.bam,1_mosaics_no/HVO_oxsRHA_1.bed,bed
+oxsRHA_2_IP,HVO,oxsR,no_NaOCl,2,0_data/oxsRHA_2_IP_S57_S63_sort.bam,oxsRHA_2_WCE,0_data/oxsRHA_2_WCE_S70_S76_sort.bam,1_mosaics_no/HVO_oxsRHA_2.bed,bed
+oxsRHA_3_IP,HVO,oxsR,no_NaOCl,3,0_data/oxsRHA_3_IP_S59_S65_sort.bam,oxsRHA_3_WCE,0_data/oxsRHA_3_WCE_S96_S44_sort.bam,1_mosaics_no/HVO_oxsRHA_3.bed,bed
+oxsRHA_4_IP,HVO,oxsR,no_NaOCl,4,0_data/oxsRHA_4_IP_S82_S88_sort.bam,oxsRHA_4_WCE,0_data/oxsRHA_4_WCE_S80_S86_sort.bam,1_mosaics_no/HVO_oxsRHA_4.bed,bed
