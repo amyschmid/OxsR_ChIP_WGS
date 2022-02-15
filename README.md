@@ -1,4 +1,4 @@
-# Data analysis for ChIP-sequencing and whole genome sequencing of Haloferax volcanii strains
+# Data analysis for whole genome sequencing and ChIP-sequencing in Haloferax volcanii strains
 
 ## Corresponds to the paper "TrmB-like family transcription factor OxsR regulates the oxidative stress response in Haloferax volcanii" by Schmid group and Maupin-Furlow group.
 
