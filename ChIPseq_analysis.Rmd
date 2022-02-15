@@ -1,0 +1,381 @@
+---
+title: "ChIP-seq analysis for the OxsR project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Data processing in Terminal
+```{r}
+# Unzip raw data
+#   $ gunzip *.gz
+
+# Trim adapter or low quality sequencesby Trim_galore
+#   $ trim_galore -o ./trimming *.fastq --paired --fastqc
+
+# Make an index and an alignment by Bowtie2
+#   $ bowtie2-build HVO.fna HVO
+#   $ for f1 in *R1_val_1.fq; do for f2 in ${f1%%_R1_val_1.fq}"_R2_val_2.fq" ; do bowtie2 -x ./Index/HVO -1 $f1 -2 $f2 -S ./sam/$f1.sam ; done; done
+
+# Format bam files
+#   $ for file in ./*.sam; do samtools view -bS $file -o ./bam/$file.bam ; done
+#   $ for file in ./*.bam; do samtools sort $file -o ./bam_sort/$file.sort.bam ; done
+#   $ for file in ./*.bam; do samtools index $file ; done
+```
+
+### Peak calling by Mosaics
+# Dataset was divided by NaOCl present/absent condition
+```{r}
+# vignette: https://www.bioconductor.org/packages/release/bioc/vignettes/mosaics/inst/doc/mosaics-example.pdf
+#BiocManager::install("mosaics") #install packages
+library(mosaics)
+library(hexbin)
+library(tidyverse)
+
+# Meta file loading
+sample_file <- read_csv("Meta_mosaics_no.csv", col_names = F) # NaOCl minus
+#sample_file <- read_csv("Meta_mosaics_NaOCl.csv", col_names = F) # NaOCl plus
+
+# Construct bins for IP - Default peak calling with fragL 200 and binsize 200
+IP_files <- unique(sample_file$X1)
+
+for (i in 1:length(IP_files)){
+  constructBins(infile=paste("0_data/", IP_files[i], sep=""),
+                fileFormat="bam",
+                outfileLoc="1_mosaics_no/bins/",      # NaOCl minus
+                #outfileLoc="1_mosaics_NaOCl/bins/",  # NaOCl plus
+                byChr=FALSE, fragLen=200, binSize=200, capping=0, PET=FALSE)
+}
+
+# Construct bins for WCE
+WCE_files <- sample_file$X2
+
+for (i in 1:length(WCE_files)){
+  constructBins(infile=paste("0_data/", WCE_files[i], sep=""),
+                fileFormat="bam",
+                outfileLoc="1_mosaics_no/bins/",   # NaOCl minus
+                #outfileLoc="1_mosaics_NaOCl/bins/",   # NaOCl plus
+                byChr=FALSE, fragLen=200, binSize=200, capping=0, PET=FALSE)
+}
+
+# Now compare between sample and ref, make fits to data, pick peaks, generate plots to assess
+# Peaks calling for each rep separately, as recommended by https://doi.org/10.5936/csbj.201401002
+
+for (i in 1:nrow(sample_file)) {
+  sample_name <- paste("1_mosaics_no/bins/", sample_file[i,1], sep = "")  # NaOCl minus
+  #sample_name <- paste("1_mosaics_NaOCl/bins/", sample_file[i,1], sep = "")  # NaOCl plus
+  sample_name <- str_replace(string = sample_name, pattern = ".bam", replacement = ".bam_fragL200_bin200.txt")
+  ref_name <- paste("1_mosaics_no/bins/", sample_file[i,2], sep = "")   # NaOCl minus
+  #ref_name <- paste("1_mosaics_NaOCl/bins/", sample_file[i,2], sep = "")   # NaOCl plus
+  ref_name <- str_replace(string = ref_name, pattern = ".bam", replacement = ".bam_fragL200_bin200.txt")
+  
+  print(paste("analyzing", sample_name, "against", ref_name))
+  
+  binTest <- readBins(type=c("chip", "input"), fileName= c(sample_name, ref_name))
+  count_data <- hexbin (binTest@input, binTest@tagCount, xbins=100)
+  control <- plot(count_data, trans=log, inv=exp, colramp=rainbow, xlab="WCE", ylab="ChIP", lcex=0.9)
+  hexVP.abline(control$plot.vp, a=0, b=sum(binTest@tagCount)/sum(binTest@input), lwd=0.2)
+  
+  dev.copy(png, paste("1_mosaics_no/", sample_file$X3[i], "_counts.png", sep=""))   # NaOCl minus
+  #dev.copy(png, paste("1_mosaics_NaOCl/", sample_file$X3[i], "_counts.png", sep=""))   # NaOCl plus
+  dev.off()
+  
+  fitTest <- mosaicsFit(binTest, analysisType="IO", bgEst="rMOM")
+  plot(fitTest)
+  
+  dev.copy(png, paste("1_mosaics_no/", sample_file$X3[i], "_fit.png", sep=""))   # NaOCl minus
+  #dev.copy(png, paste("1_mosaics_NaOCl/", sample_file$X3[i], "_fit.png", sep=""))   # NaOCl plus
+  dev.off()
+  
+  peakTest <- mosaicsPeak(fitTest, signalModel="2S", FDR=0.01, maxgap=300, minsize=20)
+  
+  export(peakTest, type="bed", filename=paste("1_mosaics_no/", sample_file$X3[i], ".bed", sep=""))  # NaOCl minus
+  #export(peakTest, type="bed", filename=paste("1_mosaics_NaOCl/", sample_file$X3[i], ".bed", sep=""))  # NaOCl plus
+}
+```
+
+
+### Quality check for the peak calling by ChIPQC
+# Dataset was divided by NaOCl present/absent condition
+```{r}
+#vignette: http://bioconductor.org/packages/devel/bioc/vignettes/ChIPQC/inst/doc/ChIPQC.pdf
+library(devtools)
+library(tidyverse)
+library(ChIPQC)
+
+# Creating a custom annotation track from .gff file
+txdb <- GenomicFeatures::makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff", format = "gff")
+
+#reduce(unique(unlist(GenomicFeatures::cdsBy(txdb, "tx"))))
+txn <- GenomicFeatures::transcripts(txdb)
+gene <- unlist(GenomicFeatures::cdsBy(txdb, "tx"))
+pro500 <- GenomicFeatures::promoters(txdb, upstream = 500, downstream = 0)
+pro250 <- GenomicFeatures::promoters(txdb, upstream = 250, downstream = 0)
+
+hvo <- list(version="",
+            gff.features = txn,
+            genes = gene,
+            promoters500 = pro500,
+            promoters250 = pro250)
+
+# load sample file
+samples <- as.data.frame(read_csv("Meta_chipqc_no.csv"))  # NaOCl minus
+#samples <- as.data.frame(read_csv("Meta_chipqc_NaOCl.csv"))  # NaOCl plus
+
+# run!
+register(SerialParam()) # prevents BiocParallel error (Run this if you use Windows!)
+exp <- ChIPQC(experiment = samples, annotation = hvo)
+ChIPQCreport(exp, reportFolder ="2_ChIPQC_no") # NaOCl minus
+#ChIPQCreport(exp, reportFolder ="2_ChIPQC_NaOCl") # NaOCl plus
+```
+
+### Identify the overlap peaks from each bio rep by DiffBind
+# Dataset was divided by NaOCl present/absent condition
+```{r}
+library(tidyverse)
+library(ChIPQC)
+library(DiffBind)
+library(openxlsx)
+library(ChIPseeker)
+
+#register(SerialParam()) # if your computer is Windows
+
+# Load all replicates with summit information. 
+#meta <- read_csv("Meta_DiffBind_no.csv")     #  NaOCl minus
+meta <- read_csv("Meta_DiffBind_NaOCl.csv")     #  NaOCl plus
+
+config <- data.frame(RunParallel=TRUE, reportInit="DBA",
+                     DataType=DBA_DATA_GRANGES,
+                     AnalysisMethod=DBA_EDGER, minQCth=30,
+                     fragmentSize=250,
+                     bCorPlot=T, th=0.01, bUsePval=FALSE)
+
+# Create initial DBA object
+oxsR <- dba(sampleSheet = meta, peakFormat = "bed", minOverlap = 0.75, config = config) #minOverlap: at least three from four bio reps
+
+# Determine which peaks overalp between reps and save the plots. 
+# Find overlaps, look at correlation between reps, and write figure file to Dropbox
+#pdf("3_DiffBind_no/3_olap-rep-corr.pdf")    #  NaOCl minus
+pdf("3_DiffBind_NaOCl/3_olap-rep-corr.pdf") #  NaOCl plus
+oxsR
+plot(oxsR)
+dba.overlap(oxsR, mode = DBA_OLAP_RATE)
+dev.off()
+
+#Calculate the number of peaks shared across 1,2,3, and 4 reps and plot
+#pdf("3_DiffBind_no/3_olap-rep-numbers.pdf")   #  NaOCl minus
+pdf("3_DiffBind_NaOCl/3_olap-rep-numbers.pdf") #  NaOCl plus
+plot(dba.overlap(oxsR, mode = DBA_OLAP_RATE),type='b',ylab='# peaks', xlab='Overlap at least this many peaksets')
+dev.off()
+
+# Export peak overlaps within replicates! 
+oxsR.count <- dba.count(oxsR, summits = 150, minOverlap = 3)
+(peak.overlap <- dba.peakset(oxsR.count, bRetrieve = T))
+
+peak.overlap.bed <- as.data.frame(peak.overlap)
+peak.overlap.bed <- peak.overlap.bed %>% mutate(peak = c("sig_overlap_peak"))
+peak.overlap.bed <- peak.overlap.bed %>% mutate(ave_height = ceiling(rowMeans(peak.overlap.bed[, 6:9])))
+peak.overlap.bed <- peak.overlap.bed[ -c(4:9)]
+
+#rtracklayer::export.gff(peak.overlap, "3_DiffBind_no/3_rep-overlaps.gff")  #  NaOCl minus
+rtracklayer::export.gff(peak.overlap, "3_DiffBind_NaOCl/3_rep-overlaps.gff")  #  NaOCl plus
+
+#write_csv(as.data.frame(peak.overlap), "3_DiffBind_no/3_rep-overlaps.csv")  #  NaOCl minus
+write_csv(as.data.frame(peak.overlap), "3_DiffBind_NaOCl/3_rep-overlaps.csv")  #  NaOCl plus
+
+# You must edit the .bed based on the .csv
+#rtracklayer::export.bed(peak.overlap.bed, "3_DiffBind_no/3_rep-overlaps_should_be_edited_with_simple_csv.bed")   #  NaOCl minus
+rtracklayer::export.bed(peak.overlap.bed, "3_DiffBind_NaOCl/3_rep-overlaps_should_be_edited_with_simple_csv.bed")   #  NaOCl plus
+
+# Peak location over chromosomes
+pdf("3_DiffBind_no/3_peak_location.pdf") #  NaOCl minus
+peak.no <- readPeakFile("3_DiffBind_no/3_rep-overlaps_should_be_edited_with_simple_csv.bed")
+#To make the same size chromosome map, these two attributes were added manually in the bed file below because no peak from two chromosome in NaOCl minus.
+# You have to remove the manipulated peaks from the final pdf or ppt!!!!!!!!
+#NC_013964.1	0	1	.	0	.
+#NC_013968.1	0	1	.	0	.
+covplot(peak.no)
+dev.off()
+
+pdf("3_DiffBind_NaOCl/3_peak_location.pdf") #  NaOCl plus
+peak.NaOCl <- readPeakFile("3_DiffBind_NaOCl/3_rep-overlaps_should_be_edited_with_simple_csv.bed")
+covplot(peak.NaOCl)
+dev.off()
+
+#write_csv(peak.overlap.bed, "3_DiffBind_no/3_rep-overlaps_should_be_edited_to_bed.csv")  #  NaOCl minus
+write_csv(peak.overlap.bed, "3_DiffBind_NaOCl/3_rep-overlaps_should_be_edited_to_bed.csv")  #  NaOCl plus
+```
+
+
+### Annotate the peak location
+# Dataset was divided by NaOCl present/absent condition
+```{r}
+library(tidyverse)
+library(GenomicRanges)
+library(GenomicFeatures)
+library(IRanges)
+library(openxlsx)
+library(rtracklayer)
+library(AnnotationHub)
+library(dplyr)
+
+gff <- GenomicFeatures::makeTxDbFromGFF("GCF_000025685.1_ASM2568v1_genomic.gff", format = "gff")
+gff.df <- read_csv("GCF_000025685.1_ASM2568v1_genomic.gff.csv")
+
+#subset whole genome gff into promoter only (i.e. intergenic ranges) and gene only structures
+genes.only <- GenomicFeatures::genes(gff)
+genes.only.redu <- reduce(genes.only, ignore.strand = T)
+ig <- gaps(genes.only.redu)
+ig.only <- ig[strand(ig) == "*"] ## This step is important to avoid duplicate entries for each gene.
+
+pro250 <- GenomicRanges::promoters(genes.only, upstream = 250, downstream = 0)
+#gene.plus.pro250 <- GenomicRanges::punion(genes.only, pro250)
+
+#pro500 <- GenomicRanges::promoters(genes.only, upstream = 500, downstream = 0)
+#gene.plus.pro500 <- GenomicRanges::punion(genes.only, pro500)
+
+# Find overlaps between peak genomic ranges and custom annotation objects (promoters vs genes)
+#filenames <- list.files(path = "3_DiffBind_no/", pattern = ".gff")   # NaOCl minus
+filenames <- list.files(path = "3_DiffBind_NaOCl/", pattern = ".gff")  # NaOCl plus
+
+for (i in 1:length(filenames)) {
+  #import gff file and convert to dataframe
+  #oxsR.pks <- rtracklayer::import(paste("3_DiffBind_no/", filenames[i], sep = ""), format = "GFF") # NaOCl minus
+  oxsR.pks <- rtracklayer::import(paste("3_DiffBind_NaOCl/", filenames[i], sep = ""), format = "GFF") # NaOCl plus
+  oxsR.pks.df <- as.data.frame(oxsR.pks)
+  
+  #add informative meta data
+  oxsR.pks$peakID <- seq(1,length(oxsR.pks))
+  oxsR.pks$peakwidth <- oxsR.pks.df$width
+  
+  #create hits objects of the overlaps (all peak widths have been standardized to 300bp wide. The must overlap a genomic feature by at least one third (100bps) to be called.) adjusting the overlap requirement changes the stringency of my peak annotation. 
+  GenomicRanges::findOverlaps(genes.only, oxsR.pks, ignore.strand=T, minoverlap = 100) -> genes
+  GenomicRanges::findOverlaps(ig.only, oxsR.pks, ignore.strand=T, minoverlap = 100) -> promoters
+
+  #get IRanges from hits objects and add informative metadata
+  genelist <- genes.only[queryHits(genes)] 
+  genelist$type <- rep("genic", length(genes))
+  genelist$reps <- oxsR.pks$name[subjectHits(genes)]
+  pintersect(genes.only[queryHits(genes)], oxsR.pks[subjectHits(genes)]) -> overlaps
+  genelist$overlap <- width(overlaps)
+  genelist$peakID <- oxsR.pks$peakID[subjectHits(genes)]
+  
+  prolist <- ig.only[queryHits(promoters)]
+  prolist$type <- rep("promoter", length(promoters))
+  prolist$reps <- oxsR.pks$name[subjectHits(promoters)]
+  pintersect(ig.only[queryHits(promoters)], oxsR.pks[subjectHits(promoters)]) -> overlaps
+  prolist$overlap <- width(overlaps)
+  prolist$peakID <- oxsR.pks$peakID[subjectHits(promoters)]
+  #prolist$gene_id <- NA 
+  
+  #convert seperate IRanges to Dataframes
+  seqs <- seq(1, length(genes))
+  as.data.frame(prolist) -> one
+  rownames(one) <- NULL
+  as.data.frame(genelist, row.names(seqs)) -> two
+  rownames(two) <- NULL
+  
+  #combine dfs (gene hits and promoter hits)
+  #final <- rbind(one, two) %>% arrange(seqnames, start, peakID)
+   final <- dplyr::bind_rows(one, two) %>% arrange(seqnames, start, peakID)
+  #colnames(final)[6] <- "locus_tag"   
+  colnames(final)[9] <- "gene_id"
+
+  #merge with gff information (get NCBI annotations and locus names)
+  #gff.df[gff.df$locus_tag %in% final$locus_tag,] -> tmp
+  #tmp[c(2,3,4,10)] -> tmp2
+  #left_join(final, tmp2, by = "locus_tag", na.rm=TRUE) -> final
+
+  #reorder if needed
+  #final <- final[c(9,1,2,3,7,4,8,5,6,11,10,12)]
+
+  # Final significant peaks at least three bio rep from four.
+  ### NaOCl minus
+#    if (i == 1) {
+#      write.xlsx(final, "4_Annotation/4_HVO_genelists_no.xlsx", str_remove_all(filenames[i], ".gff"), row.names = F, asTable = TRUE)
+#    } else {
+#        write.xlsx(final, "4_Annotation/4_HVO_genelists_no.xlsx", str_remove_all(filenames[i], ".gff"), row.names = F, append = T, asTable = TRUE)}
+   
+  ### NaOCl plus
+      if (i == 1) {
+      write.xlsx(final, "4_Annotation/4_HVO_genelists_NaOCl.xlsx", str_remove_all(filenames[i], ".gff"), row.names = F, asTable = TRUE)
+    } else {
+        write.xlsx(final, "4_Annotation/4_HVO_genelists_NaOCl.xlsx", str_remove_all(filenames[i], ".gff"), row.names = F, append = T, asTable = TRUE)}
+}
+```
+
+
+### Functional enrichment--code from Dulmage et al., 2015 (doi: 10.1128/mBio.00649-15)
+# Load arCOG annotation and gene list files
+```{r}
+#rm(list = ls())
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+#Read in gene list file, in this case, a list of peaks significantly bound by OxsR
+#genes <- read.csv ('Func_input_promoter_no.csv')  # NaOCl minus
+genes <- read.csv ('Func_input_promoter_NaOCl_test.csv')  # NaOCl plus
+cogs <- read.csv ('2014_2018_arCOG_HVO_renewed.csv')
+
+
+## Prepare gene list (parse out gene unique IDs that are non-redundant and match those in cogfile)
+genelist.p <- distinct(genes, locus_tag, .keep_all = TRUE)
+genelist <- subset (genelist.p, select = 'locus_tag')
+#genelist <- as.data.frame(genelist[-1, ]) #remove the first row - it's empty
+#colnames(genelist) <- "locus_tag"
+
+## Set up the hypergeometric test function
+#Calculate statistical information about the cogs represented in the list of genes using the function below.
+# Cogtest: three inputs to this function: 
+# 1) list of gene names from the cluster (namelist)
+# 2) COG file
+# 3) p-value cutoff.  
+#Note: can also do cogtest by different ID, just replace "cogfile$locus_tag" argument with other type of identifier, e.g. "cogfile$acc")
+cogtest2=function(namelist, cogfile, pvalue) {
+	cogs= subset(cogfile, is.element(cogfile$locus_tag, namelist$locus_tag)==TRUE)
+	clust= summary(cogs$funclass_name)
+	resm <- matrix(0, length(clust), 3)
+	res <-data.frame(resm)
+	rownames(res) <- names(clust)
+	colnames(res) <- c("probability", "expect","count")
+	all=summary(cogfile$funclass_name)
+	totaln=sum(all)
+	
+		for (i in 1:length(clust)){
+			res[i,1] <- phyper(clust[i], all[i], totaln-all[i], length(namelist$locus_tag),lower.tail=F)
+			res[i,2] <- all[i]*(length(namelist$locus_tag)/totaln)
+			res[i,3] <- clust[i]
+		}
+	subset(res,probability<=pvalue&count!=0)
+}
+
+## Use the following function to look at the genes in your cluster associated with a particular COG
+#Note: the COGcategory name must be entered in quotes and add a space to the end of the category name of interest, e.g. 'transport '
+cogset= function(namelist, cogfile, COGcategory) {
+	subset(cogfile, is.element(cogfile$locus_tag, namelist$locus_tag)&is.element(cogfile$funclass_name, COGcategory)==TRUE)
+}
+
+
+## run the hypergeometric test to identify enriched functional categories
+mycogs <- cogtest2(genelist, cogs, 1) # no p-value cutoff
+
+all_mycogs <- mycogs %>%     # Make a result table
+  data.frame() %>%
+  rownames_to_column(var="COG_category") %>%
+  as_tibble()
+all_mycogs <- all_mycogs[order(all_mycogs$probability),]
+write_csv(all_mycogs, "test.csv")
+
+sig_mycogs <- all_mycogs %>%    # p-value cutoff applied
+  filter(probability < 0.05)
+write_csv(sig_mycogs, "test_sig.csv")  # _arCOG_sig
+
+ggplot(sig_mycogs, aes(x=COG_category, y=count)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label=count), vjust=0) +
+  theme(axis.text.x=element_text(angle = -90, hjust=0)) + 
+  theme(text = element_text(size=10))
+```
