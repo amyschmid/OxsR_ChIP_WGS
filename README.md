@@ -13,8 +13,8 @@
 
 #### 2) ChIP-seq
 * The most recent versions of R, RStudio and R packages
-  * [R](https://cran.r-project.org/)
-  * [RStudio](https://www.rstudio.com/products/rstudio/download/#download)
+  * [R](https://cran.r-project.org/) (R v4.1.0 in this study)
+  * [RStudio](https://www.rstudio.com/products/rstudio/download/#download) (RStudio v1.3.1093 in this study)
   * R packages from Bioconductor, using `BiocManager::install()` function
 ```r
 BiocManager::install("mosaics")
