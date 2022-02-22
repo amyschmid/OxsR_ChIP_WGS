@@ -1,0 +1,285 @@
+---
+title: "2022-02-07-arcog-OxsR"
+author: "Amy Schmid"
+date: "2/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Calculating arCOG functional enrichment -- code from Dulmage et al., 2015 
+"Growth phase specific modulation of cell morphology and gene expression by an archaeal histone protein". mBio 6(5):e00649-15. doi: 10.1128/mBio.00649-15.
+
+## Load required packages
+```{r}
+library(tidyverse)
+#library(plyr)
+library(dplyr)
+library(openxlsx)
+library(ggplot2)
+library(bazar)
+
+```
+
+## Load arCOG annotation and gene list files
+```{r}
+
+#Read in gene list file, in this case, a list of sites and genes nearby bound by OxsR in HVO.
+
+genes <- read_excel ('oxsR-chipseq.xlsx')
+#genes <- read.csv ('HME_genelists.csv')
+#genes <- read.csv ('HCA_genelists.csv')
+
+cogfile <- read.delim('arcogs-14-18.hvo.txt', sep = "\t", header = TRUE)
+#cogs <- read.delim('arcogs-14-18.hme.txt', sep = "\t", header = TRUE)
+#cogs <- read.delim('arcogs-14.hca.txt', sep = "\t", header = TRUE)
+
+#fetch old locus IDs (HVO_xxxx) from genome file and add to the cog file
+key.hvo <- read.csv ('20181113_hvol_GCF_000025685.1_ASM2568v1_genomic.gff.key.csv')
+cogfile <- merge(cogfile, key.hvo, by = "locus_tag", all.x = TRUE)
+
+
+
+namelist=genes$old_locus_tag
+namelist=as.character(namelist)
+
+l=length(namelist)
+
+pvalue=0.05
+Name="Hvo_OxsR"
+
+```
+
+## Prepare gene list (parse out gene unique IDs that are non-redundant and match those in cogfile)
+```{r}
+#genelist.p <- distinct(genes, locus_tag, .keep_all = TRUE)
+#genelist <- subset (genelist.p, select = 'locus_tag')
+#genelist <- as.data.frame(genelist[-1, ]) #remove the first row - it's empty
+#colnames(genelist) <- "locus_tag"
+#note: this will remove all rows with no locus identifiers, but that's ok because, in this ChIP-seq data, the "promoter" hits are redundant with "promoter500" hits except that the "promoter500" hits have nearby gene annotations associated. 
+
+```
+
+## calculate enrichment in arCOG categories for all bound genes (regardless of promoter / genic location or condition) using the hypergeometric test
+
+
+```{r}
+cogfile$funclass_name=as.factor(cogfile$funclass_name)
+cogs= subset(cogfile, is.element(cogfile$old_locus_tag, namelist)==TRUE)
+clust= summary(cogs$funclass_name)
+
+resm <- matrix(0,length(clust),3)
+
+
+res <-data.frame(resm)
+rownames(res) <- names(clust)
+colnames(res) <- c("probability", "expect","count")
+
+all=summary(cogfile$funclass_name)
+totaln=sum(all)
+
+for (i in 1:length(clust)){
+  res[i,1] <- phyper(clust[i], all[i], totaln-all[i],length(namelist) ,lower.tail=F)
+  res[i,2] <- all[i]*(length(namelist)/totaln)
+  res[i,3] <- clust[i]
+}
+
+#correct for multiple hypothesis testing
+res$padj <- p.adjust(res$probability, method = "BH")
+res.signif  <- subset(res,probability<=pvalue&count!=0)
+res.signif$padj <- p.adjust(res.signif$probability, method  = "BH")
+
+```
+
+
+## calculate enrichment in arCOG categories for all genes bound in their promoter under hypochlorite) using the hypergeometric test
+
+
+```{r}
+#subset the list of genes
+naocl.genes=genes[(genes$Growth_condition=="NaOCl" & genes$type == "promoter"), ]
+namelist=naocl.genes$old_locus_tag
+namelist= as.character(namelist)
+
+cogfile$funclass_name=as.factor(cogfile$funclass_name)
+cogs= subset(cogfile, is.element(cogfile$old_locus_tag, namelist)==TRUE)
+
+clust= summary(cogs$funclass_name)
+
+resm <- matrix(0,length(clust),3)
+
+
+res.naocl <-data.frame(resm)
+rownames(res.naocl) <- names(clust)
+colnames(res.naocl) <- c("probability", "expect","count")
+
+all=summary(cogfile$funclass_name)
+totaln=sum(all)
+
+for (i in 1:length(clust)){
+  res.naocl[i,1] <- phyper(clust[i], all[i], totaln-all[i],length(namelist) ,lower.tail=F)
+  res.naocl[i,2] <- all[i]*(length(namelist)/totaln)
+  res.naocl[i,3] <- clust[i]
+}
+
+#correct for multiple hypothesis testing
+res.naocl$padj <- p.adjust(res.naocl$probability, method = "BH")
+res.naocl.signif  <- subset(res.naocl,probability<=pvalue&count!=0)
+res.naocl.signif$padj <- p.adjust(res.naocl.signif$probability, method  = "BH")
+
+```
+
+## print out the list of bound genes in all arCOG categories
+```{r addCOGstogenelist,warning=FALSE}
+
+# Adding COG information to list of ChIP-seq hits to make supplementary table S2
+
+namelist=genes$old_locus_tag
+namelist=as.character(namelist)
+
+InputwithCOGs=genes
+classnamevector=as.character(vector(length=l))
+classsymbolvector=as.character(vector(length=l))
+annotationvector=as.character(vector(length=l))
+
+for (i in (1:l)) {
+  relgene=namelist[i]
+  relindex=grep(relgene,cogfile$old_locus_tag,ignore.case=TRUE)
+  if (!is.empty(relindex)) {
+    classnamevector[i]=as.character(cogfile$funclass_name[relindex])
+    classsymbolvector[i]=as.character(cogfile$functional_class[relindex])
+    annotationvector[i]=as.character(cogfile$arCOG_ID[relindex])
+  }
+}
+
+InputwithCOGs=cbind(InputwithCOGs,classsymbolvector,classnamevector,annotationvector)
+
+#InputwithCOGs=InputwithCOGs[,c(2,4,8,15)]
+colnames(InputwithCOGs)[15:17]=c("functional_class","funclass_name","arcog_name")
+
+head(InputwithCOGs)
+```
+
+
+## print out the list of genes in the enriched categories 
+```{r}
+#get list of genes in  enriched categories for all sites, all conditions
+pvalue = 0.05
+
+namelist=genes$old_locus_tag
+namelist=as.character(namelist)
+
+funclasses=rownames(res.signif)
+l2=length(funclasses)
+tmpnumber=dim(cogs)[2]
+Listofgenes=as.data.frame(matrix(nrow=1,ncol=tmpnumber))
+colnames(Listofgenes)=colnames(cogs)
+
+
+for (i in (1:l2)) {
+  relclass=funclasses[i]
+  relpval=res.signif$padj[i]
+  if (relpval<pvalue) {
+    addedgenes=subset(cogs,is.element(cogs$funclass_name,relclass))
+    Listofgenes=rbind(Listofgenes,addedgenes)
+  }
+}
+
+Listofgenes=Listofgenes[-1,]
+#Listofgenes=Listofgenes[,c(27,3,4,10,19,20,21)]
+
+head(Listofgenes)
+```
+
+
+```{r}
+#get list of genes in  enriched categories for promoter binding sites, hypochlorite exposure conditions only
+
+pvalue = 0.05
+namelist=naocl.genes$old_locus_tag
+namelist= as.character(namelist)
+
+funclasses=rownames(res.naocl.signif)
+l2=length(funclasses)
+tmpnumber=dim(cogs)[2]
+Listof.Cl.genes=as.data.frame(matrix(nrow=1,ncol=tmpnumber))
+colnames(Listof.Cl.genes)=colnames(cogs)
+
+
+for (i in (1:l2)) {
+  relclass=funclasses[i]
+  relpval=res.naocl.signif$padj[i]
+  if (relpval<pvalue) {
+    addedgenes=subset(cogs,is.element(cogs$funclass_name,relclass))
+    Listof.Cl.genes=rbind(Listof.Cl.genes,addedgenes)
+  }
+}
+
+Listof.Cl.genes=Listof.Cl.genes[-1,]
+#Listofgenes=Listofgenes[,c(27,3,4,10,19,20,21)]
+
+head(Listof.Cl.genes)
+```
+#Save results to tables
+```{r output}
+write.xlsx(InputwithCOGs,paste(Name,"ChIPSeqtablewithCOGs.xlsx",sep="_"),row.names=FALSE, overwrite = TRUE)
+
+write.xlsx(Listofgenes,paste(Name,"allCOGenrichedgenes-padj.xlsx",sep="_"),row.names=FALSE, overwrite = TRUE)
+
+write.xlsx(Listof.Cl.genes,paste(Name,"COGenrichedgenes_NaOCl-padj.xlsx",sep="_"),row.names=FALSE, overwrite = TRUE)
+
+
+write.xlsx(res.signif,paste(Name,"allCOGpvals-padj.xlsx",sep="_"),row.names=TRUE, overwrite = TRUE)
+write.xlsx(res.naocl.signif,paste(Name,"NaOCl.only_COGpvals-padj.xlsx",sep="_"),row.names=TRUE,overwrite = TRUE)
+
+```
+
+## plot the results - enriched categories hypochlorite only, promoter only
+```{r}
+cog.enr <- read.delim("Hvo_OxsR_NaOCl.only_COGpvals-padj-forR.txt", sep = "\t")
+
+pdf("arCOG.bargraph-padj-naocl.pdf", width = 6, height = 4)
+ggplot(cog.enr, aes(x = reorder (COGdesignation, count), y = count, fill = neg.log.padj)) +
+  geom_bar(stat = "identity") + 
+  coord_flip() +
+  theme_classic(base_size = 20) +
+  scale_fill_gradient(low = "grey85", high = "purple3", limits = c(0,10)) +
+  labs(colour = "neg.logpadj", x = "arCOG category", y = "number of genes")
+
+
+dev.off()
+```
+
+## plot the results - all categories 
+```{r}
+#summarize the results for all COGs - how many genes are in each category? how does gene number relate to p-values?
+
+funclass <- cogfile[ ,c("functional_class", "funclass_name")]
+funclass <- unique (funclass)
+cog.all <- count(InputwithCOGs, "functional_class")
+cog.all <- subset (cog.all, functional_class !="FALSE" & functional_class !="<NA>")
+cog.all <- left_join (cog.all, funclass, by = "functional_class")
+res2 <- tibble::rownames_to_column(res, "funclass_name")
+cog.all <- left_join (cog.all, res2, by = "funclass_name")
+cog.all$neg.log.p <- -log(cog.all$probability)
+write.table (cog.all, file = "arCOG_chipseq_allcogs_freq.txt" , sep = "\t")
+```
+
+```{r}
+pdf("arCOG.all.bargraph-pval.pdf", width = 6, height = 4)
+ggplot(cog.all, aes(x = reorder (functional_class, count), y = freq, fill = neg.log.p)) +
+  geom_bar(stat = "identity") + 
+  coord_flip() +
+  theme_classic(base_size = 20) +
+  scale_fill_gradient(low = "grey85", high = "purple3", limits = c(0,10)) +
+  labs(colour = "neg.logpadj", x = "arCOG category", y = "number of genes")
+
+
+dev.off()
+```
+
+
+
+
