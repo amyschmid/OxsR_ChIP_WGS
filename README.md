@@ -40,3 +40,7 @@ in R or Rstudio, install packages with the following versions (or newer):
  * ggplot2 3.3.5
  * bazar 1.0.11
 
+The run "2022-02-07-arcog-OxsR.Rmd" with input files:
+* oxsR-chipseq.xlsx
+* arcogs-14-18.hvo.txt
+* 20181113_hvol_GCF_000025685.1_ASM2568v1_genomic.gff.key.csv
