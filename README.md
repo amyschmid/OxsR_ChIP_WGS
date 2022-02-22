@@ -33,10 +33,10 @@ BiocManager::install("AnnotationHub")
 -Run analysis using raw data and [metadata](https://github.com/sungminhwang-duke/OxsR_ChIP_WGS/tree/master/Meta_data) files deposited <br/>
 
 #### 2) arCOG functional enrichment analysis
-* in R or Rstudio:
- * tidyverse
- * dplyr
- * openxlsx
- * ggplot2
- * bazar
+in R or Rstudio, install packages with the following versions (or newer):
+ * tidyverse 1.3.1
+ * dplyr 1.0.7
+ * openxlsx 4.2.4
+ * ggplot2 3.3.5
+ * bazar 1.0.11
 
