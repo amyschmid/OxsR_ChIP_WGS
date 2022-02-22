@@ -31,3 +31,12 @@ BiocManager::install("AnnotationHub")
 -Installation of packages, downloading raw sequencing data ([GEO accession #GSE196894](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE196894)) and [reference genome of H. volcanii](https://www.ncbi.nlm.nih.gov/genome/?term=haloferax+volcanii) <br/>
 -Open the Rmd file contains command lines for the analysis <br/>
 -Run analysis using raw data and [metadata](https://github.com/sungminhwang-duke/OxsR_ChIP_WGS/tree/master/Meta_data) files deposited <br/>
+
+#### 2) arCOG functional enrichment analysis
+* in R or Rstudio:
+tidyverse
+dplyr
+openxlsx
+ggplot2
+bazar
+
