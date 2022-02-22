@@ -34,9 +34,9 @@ BiocManager::install("AnnotationHub")
 
 #### 2) arCOG functional enrichment analysis
 * in R or Rstudio:
-tidyverse
-dplyr
-openxlsx
-ggplot2
-bazar
+ * tidyverse
+ * dplyr
+ * openxlsx
+ * ggplot2
+ * bazar
 
